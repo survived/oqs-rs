@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use jsonrpc_client_http::{HttpHandle, HttpTransport};
-use oqs::kex::{AliceMsg, BobMsg};
+use oqs::kem::{AliceMsg, BobMsg};
 
 error_chain! {
     errors {

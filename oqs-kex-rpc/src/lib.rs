@@ -88,7 +88,7 @@ extern crate jsonrpc_http_server;
 extern crate jsonrpc_macros;
 
 
-pub use oqs::kex::{OqsKexAlg, SharedKey};
+pub use oqs::kem::{OqsKexAlg, SharedKey};
 pub use oqs::rand::OqsRandAlg;
 
 /// Module containing a JSON-RPC 2.0 client for key exchange.

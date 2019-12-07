@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use oqs;
-use oqs::kex::{AliceMsg, BobMsg, OqsKex, OqsKexAlg, OqsKexAlice, SharedKey};
+use oqs::kem::{AliceMsg, BobMsg, OqsKex, OqsKexAlg, OqsKexAlice, SharedKey};
 use oqs::rand::{OqsRand, OqsRandAlg};
 
 use jsonrpc_client_http::HttpHandle;
@@ -83,14 +83,14 @@ impl OqsKexClient {
     fn init_kex<'r>(rand: &'r OqsRand, algs: &[OqsKexAlg]) -> Result<Vec<OqsKex<'r>>> {
         algs.iter()
             .map(|alg| OqsKex::new(&rand, *alg))
-            .collect::<oqs::kex::Result<_>>()
+            .collect::<oqs::kem::Result<_>>()
             .chain_err(|| ErrorKind::OqsError)
     }
 
     fn alice_0<'a, 'r>(kexs: &'a [OqsKex<'r>]) -> Result<Vec<OqsKexAlice<'a, 'r>>> {
         kexs.iter()
             .map(|kex| kex.alice_0())
-            .collect::<oqs::kex::Result<_>>()
+            .collect::<oqs::kem::Result<_>>()
             .chain_err(|| ErrorKind::OqsError)
     }
 
@@ -99,7 +99,7 @@ impl OqsKexClient {
             .into_iter()
             .zip(bob_msgs)
             .map(|(alice_kex, bob_msg)| alice_kex.alice_1(&bob_msg))
-            .collect::<oqs::kex::Result<_>>()
+            .collect::<oqs::kem::Result<_>>()
             .chain_err(|| ErrorKind::OqsError)
     }
 

@@ -4,7 +4,7 @@ extern crate oqs;
 extern crate test;
 
 use test::Bencher;
-use oqs::kex::{OqsKex, OqsKexAlg};
+use oqs::kem::{OqsKex, OqsKexAlg};
 use oqs::rand::{OqsRand, OqsRandAlg};
 
 /// Macro generating all benchmarks for a given KEX algorithm

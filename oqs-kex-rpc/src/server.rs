@@ -11,7 +11,7 @@
 
 use futures;
 use oqs;
-use oqs::kex::{AliceMsg, BobMsg, OqsKex, OqsKexAlg, SharedKey};
+use oqs::kem::{AliceMsg, BobMsg, OqsKex, OqsKexAlg, SharedKey};
 use oqs::rand::{OqsRand, OqsRandAlg};
 
 use error_chain::ChainedError;
@@ -86,7 +86,7 @@ where
 
 mod api {
     use jsonrpc_core::{BoxFuture, Error};
-    use oqs::kex::{AliceMsg, BobMsg};
+    use oqs::kem::{AliceMsg, BobMsg};
 
     build_rpc_trait! {
         pub trait OqsKexRpcServerApi {
@@ -255,7 +255,7 @@ where
     fn init_kex<'r>(rand: &'r OqsRand, msgs: &[AliceMsg]) -> Result<Vec<OqsKex<'r>>> {
         msgs.iter()
             .map(|msg| OqsKex::new(&rand, msg.algorithm()))
-            .collect::<oqs::kex::Result<_>>()
+            .collect::<oqs::kem::Result<_>>()
             .chain_err(|| ErrorKind::OqsError)
     }
 
