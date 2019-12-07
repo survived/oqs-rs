@@ -16,8 +16,7 @@
 //! [liboqs]: https://github.com/open-quantum-safe/liboqs
 //! [`OqsKem`]: struct.OqsKem.html
 
-use libc;
-use core::ptr::{self, NonNull};
+use core::ptr::NonNull;
 use std::fmt;
 
 use oqs_sys::kex as ffi;
@@ -123,9 +122,6 @@ impl OqsKemAlg {
         }
     }
 }
-
-static LWE_FRODO_PARAM: &str = "recommended\0";
-
 
 /// The main key exchange struct. Used by both Alice and Bob to generate their respective public
 /// messages and the final [shared secret key].

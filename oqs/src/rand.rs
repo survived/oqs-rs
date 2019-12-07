@@ -6,9 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::ptr;
-use std::fmt;
-
 use oqs_sys::common::OQS_STATUS;
 use oqs_sys::rand as ffi;
 
