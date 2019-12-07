@@ -272,8 +272,6 @@ impl ::std::error::Error for Error {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -282,6 +280,29 @@ mod tests {
 
     #[test]
     fn bike() {
+        let kem = OqsKem::new(OqsKemAlg::Bike1L1Cpa).unwrap();
 
+        // Alice
+        let mut alice_private_key = vec![0u8; kem.private_key_length()];
+        let mut alice_public_key = vec![0u8; kem.public_key_length()];
+        kem.generate_keypair(&mut alice_public_key, &mut alice_private_key).unwrap();
+
+        // Alice -> Bob
+        let bob_received_public_key = alice_public_key;
+
+        // Bob
+        let mut bob_ciphertext = vec![0u8; kem.cipher_text_length()];
+        let mut bob_shared_secret = vec![0u8; kem.shared_secret_length()];
+        kem.encapsulate(&bob_received_public_key, &mut bob_shared_secret, &mut bob_ciphertext).unwrap();
+
+        // Bob -> Alice
+        let alice_received_ciphertext = bob_ciphertext;
+
+        // Alice
+        let mut alice_shared_secret = vec![0u8; kem.shared_secret_length()];
+        kem.decapsulate(&alice_private_key, &alice_received_ciphertext, &mut alice_shared_secret).unwrap();
+
+        // Finally
+        assert_eq!(alice_shared_secret, bob_shared_secret, "Shared secret must be the same")
     }
 }
