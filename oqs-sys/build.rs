@@ -71,6 +71,7 @@ fn main() {
         .use_core()
         .ctypes_prefix("::libc")
         .whitelist_type("OQS_RAND.*")
+        .whitelist_var("OQS_RAND.*")
         .whitelist_function("OQS_rand.*")
         .whitelist_recursively(false)
         .raw_line("use ::common::OQS_STATUS;")

@@ -9,6 +9,7 @@
 use core::ptr;
 use std::fmt;
 
+use oqs_sys::common::OQS_STATUS;
 use oqs_sys::rand as ffi;
 
 /// Enum representation of the supported PRNG algorithms. Used to select backing algorithm when
@@ -16,99 +17,35 @@ use oqs_sys::rand as ffi;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum OqsRandAlg {
-    /// The default PRNG. Which algorithm that is the default is defined by `liboqs`.
-    Default,
-    /// ChaCha20 based PRNG.
-    UrandomChacha20,
-    /// AES-CTR based PRNG.
-    UrandomAesctr,
+    /// Reads bytes directly from `/dev/urandom`.
+    System,
+    /// OpenSSL's PRNG.
+    OpenSsl,
+    /// NIST deterministic RNG for KATs
+    NistKat,
 }
 
-impl From<OqsRandAlg> for ffi::OQS_RAND_alg_name {
-    fn from(alg: OqsRandAlg) -> Self {
-        use self::OqsRandAlg::*;
-        match alg {
-            Default => ffi::OQS_RAND_alg_name::OQS_RAND_alg_default,
-            UrandomChacha20 => ffi::OQS_RAND_alg_name::OQS_RAND_alg_urandom_chacha20,
-            UrandomAesctr => ffi::OQS_RAND_alg_name::OQS_RAND_alg_urandom_aesctr,
+impl OqsRandAlg {
+    pub fn alg_name(&self) -> &'static [u8] {
+        match self {
+            OqsRandAlg::System => ffi::OQS_RAND_alg_system,
+            OqsRandAlg::NistKat => ffi::OQS_RAND_alg_nist_kat,
+            OqsRandAlg::OpenSsl => ffi::OQS_RAND_alg_openssl,
         }
     }
 }
+
 
 impl Default for OqsRandAlg {
     fn default() -> Self {
-        OqsRandAlg::Default
+        OqsRandAlg::System
     }
 }
 
-/// The PRNG structure.
-pub struct OqsRand {
-    algorithm: OqsRandAlg,
-    pub(crate) oqs_rand: *mut ffi::OQS_RAND,
-}
-
-impl OqsRand {
-    /// Initializes and returns a new PRNG based on the given algorithm.
-    pub fn new(algorithm: OqsRandAlg) -> Result<Self> {
-        let oqs_rand = unsafe { ffi::OQS_RAND_new(ffi::OQS_RAND_alg_name::from(algorithm)) };
-        if oqs_rand != ptr::null_mut() {
-            Ok(OqsRand {
-                algorithm,
-                oqs_rand,
-            })
-        } else {
-            Err(Error)
-        }
-    }
-
-    /// Returns the algorithm backing this PRNG.
-    pub fn algorithm(&self) -> OqsRandAlg {
-        self.algorithm
-    }
-
-    /// Returns an 8-bit random unsigned integer
-    pub fn rand_8(&self) -> u8 {
-        unsafe { ffi::OQS_RAND_8(self.oqs_rand) }
-    }
-
-    /// Returns an 32-bit random unsigned integer
-    pub fn rand_32(&self) -> u32 {
-        unsafe { ffi::OQS_RAND_32(self.oqs_rand) }
-    }
-
-    /// Returns an 64-bit random unsigned integer
-    pub fn rand_64(&self) -> u64 {
-        unsafe { ffi::OQS_RAND_64(self.oqs_rand) }
-    }
-
-    /// Fills the given buffer with random data
-    pub fn rand_n(&self, buffer: &mut [u8]) {
-        unsafe { ffi::OQS_RAND_n(self.oqs_rand, buffer.as_mut_ptr(), buffer.len()) }
-    }
-}
-
-impl Drop for OqsRand {
-    fn drop(&mut self) {
-        unsafe { ffi::OQS_RAND_free(self.oqs_rand) };
-    }
-}
-
-/// The local result alias.
-pub type Result<T> = ::std::result::Result<T, Error>;
-
-/// Error representing a failure to initialize an [`OqsRand`](struct.OqsRand.html).
-#[derive(Debug, Copy, Clone, Hash)]
-pub struct Error;
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> ::std::result::Result<(), fmt::Error> {
-        use std::error::Error;
-        self.description().fmt(f)
-    }
-}
-
-impl ::std::error::Error for Error {
-    fn description(&self) -> &str {
-        "Error during PRNG initialization"
-    }
+pub fn switch_algorithm(alg: OqsRandAlg) -> Result<(), ()> {
+    let alg_name = alg.alg_name();
+    let status = unsafe {
+        ffi::OQS_randombytes_switch_algorithm(alg_name.as_ptr() as *const ::libc::c_char)
+    };
+    if status == OQS_STATUS::OQS_SUCCESS { Ok(()) } else { Err(()) }
 }
