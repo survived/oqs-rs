@@ -276,11 +276,69 @@ impl ::std::error::Error for Error {
 mod tests {
     use super::*;
 
-    use rand::OqsRandAlg;
+    use super::OqsKemAlg::*;
 
-    #[test]
-    fn bike() {
-        let kem = OqsKem::new(OqsKemAlg::Bike1L1Cpa).unwrap();
+    macro_rules! test_factory {
+        ($test_name: ident over $kem_alg: expr) => {
+            #[test]
+            fn $test_name() {
+                test_algorithm($kem_alg)
+            }
+        };
+        ($a: ident over $b: expr, $($rest: tt)*) => {
+            test_factory!($a over $b);
+            test_factory!($($rest)*);
+        };
+        () => {}
+    }
+
+    test_factory! {
+        alg_default              over Default,
+        alg_bike1_l1_cpa         over Bike1L1Cpa,
+        alg_bike1_l3_cpa         over Bike1L3Cpa,
+        alg_bike1_l1_fo          over Bike1L1Fo,
+        alg_bike1_l3_fo          over Bike1L3Fo,
+        alg_kyber_512            over Kyber512,
+        alg_kyber_768            over Kyber768,
+        alg_kyber_1024           over Kyber1024,
+        alg_kyber_512_90s        over Kyber51290s,
+        alg_kyber_768_90s        over Kyber76890s,
+        alg_kyber_1024_90s       over Kyber102490s,
+        alg_newhope_512cca       over Newhope512cca,
+        alg_newhope_1024cca      over Newhope1024cca,
+        alg_ntru_hps2048509      over NtruHps2048509,
+        alg_ntru_hps2048677      over NtruHps2048677,
+        alg_ntru_hps4096821      over NtruHps4096821,
+        alg_ntru_hrss701         over NtruHrss701,
+        alg_saber_lightsaber     over SaberLightsaber,
+        alg_saber_saber          over SaberSaber,
+        alg_saber_firesaber      over SaberFiresaber,
+        alg_frodokem_640_aes     over Frodokem640Aes,
+        alg_frodokem_640_shake   over Frodokem640Shake,
+        alg_frodokem_976_aes     over Frodokem976Aes,
+        alg_frodokem_976_shake   over Frodokem976Shake,
+        alg_frodokem_1344_aes    over Frodokem1344Aes,
+        alg_frodokem_1344_shake  over Frodokem1344Shake,
+        alg_sidh_p434            over SidhP434,
+        alg_sidh_p434_compressed over SidhP434Compressed,
+        alg_sidh_p503            over SidhP503,
+        alg_sidh_p503_compressed over SidhP503Compressed,
+        alg_sidh_p610            over SidhP610,
+        alg_sidh_p610_compressed over SidhP610Compressed,
+        alg_sidh_p751            over SidhP751,
+        alg_sidh_p751_compressed over SidhP751Compressed,
+        alg_sike_p434            over SikeP434,
+        alg_sike_p434_compressed over SikeP434Compressed,
+        alg_sike_p503            over SikeP503,
+        alg_sike_p503_compressed over SikeP503Compressed,
+        alg_sike_p610            over SikeP610,
+        alg_sike_p610_compressed over SikeP610Compressed,
+        alg_sike_p751            over SikeP751,
+        alg_sike_p751_compressed over SikeP751Compressed,
+    }
+
+    fn test_algorithm(alg: OqsKemAlg) {
+        let kem = OqsKem::new(alg).unwrap();
 
         // Alice
         let mut alice_private_key = vec![0u8; kem.private_key_length()];
