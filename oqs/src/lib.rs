@@ -29,7 +29,7 @@
 //! extern crate oqs;
 //!
 //! use oqs::rand::{OqsRand, OqsRandAlg};
-//! use oqs::kex::{OqsKex, OqsKexAlg, SharedKey};
+//! use oqs::kem::{OqsKex, OqsKexAlg, SharedKey};
 //!
 //! fn example_kex(algorithm: OqsKexAlg) -> Result<SharedKey, KexError> {
 //!     // Create the PRNG that oqs will use as entropy source
@@ -58,8 +58,8 @@
 //! }
 //!
 //! # struct KexError;
-//! # impl From<oqs::kex::Error> for KexError {
-//! #     fn from(_: oqs::kex::Error) -> Self { KexError }
+//! # impl From<oqs::kem::Error> for KexError {
+//! #     fn from(_: oqs::kem::Error) -> Self { KexError }
 //! # }
 //! # impl From<oqs::rand::Error> for KexError {
 //! #     fn from(_: oqs::rand::Error) -> Self { KexError }
@@ -84,7 +84,7 @@ extern crate oqs_sys;
 extern crate serde;
 
 /// The key exchange primitives.
-pub mod kex;
+pub mod kem;
 
 /// The PRNG primitives.
 pub mod rand;

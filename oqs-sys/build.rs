@@ -89,11 +89,12 @@ fn main() {
         .whitelist_recursively(false)
         .whitelist_type("OQS_KEM.*")
         .whitelist_function("OQS_KEM_.*")
+        .whitelist_var("OQS_KEM.*")
         .raw_line("use ::common::OQS_STATUS;")
 //        .raw_line("use ::rand::OQS_RAND;")
         .generate()
         .unwrap()
-        .write_to_file(out_dir.join("kex.rs"))
+        .write_to_file(out_dir.join("kem.rs"))
         .unwrap();
 
 //    let _ = bindgen::builder()

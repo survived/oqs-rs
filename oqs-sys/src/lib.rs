@@ -44,7 +44,7 @@ extern crate libc;
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 pub mod kex {
-    include!(concat!(env!("OUT_DIR"), "/kex.rs"));
+    include!(concat!(env!("OUT_DIR"), "/kem.rs"));
 }
 
 /// The PRNG part of liboqs.
