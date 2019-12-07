@@ -17,11 +17,11 @@
 //! [`OqsKem`]: struct.OqsKem.html
 
 use core::ptr::NonNull;
-use std::fmt;
+use snafu::{ResultExt, Snafu};
 
 use oqs_sys::kex as ffi;
-use oqs_sys::common::OQS_STATUS::OQS_SUCCESS;
 
+use crate::error::{OqsError, OqsStatusEx};
 
 /// Enum representation of the supported key exchange algorithms. Used to select backing algorithm
 /// when creating [`OqsKem`](struct.OqsKem.html) instances.
@@ -157,7 +157,7 @@ impl OqsKem {
         };
         match NonNull::new(oqs_kex) {
             Some(oqs_kex) => Ok(OqsKem{ algorithm, oqs_kex }),
-            None => Err(Error),
+            None => Err(Error::LiboqsFailure { source: OqsError::LiboqsError }),
         }
     }
 
@@ -189,11 +189,17 @@ impl OqsKem {
     pub fn generate_keypair<'a>(&'a self, public_key: &mut [u8], private_key: &mut [u8]) -> Result<()> {
         if public_key.len() < self.public_key_length() {
             // Public key length violation
-            return Err(Error)
+            return Err(Error::PublicKeyInsufficientSize {
+                expected: self.public_key_length(),
+                actual: public_key.len(),
+            })
         }
         if private_key.len() < self.private_key_length() {
             // Private key length violation
-            return Err(Error)
+            return Err(Error::PrivateKeyInsufficientSize {
+                expected: self.private_key_length(),
+                actual: private_key.len(),
+            })
         }
         let result = unsafe {
             ffi::OQS_KEM_keypair(
@@ -202,17 +208,23 @@ impl OqsKem {
                 private_key.as_mut_ptr(),
             )
         };
-        if result == OQS_SUCCESS { Ok(()) } else { Err(Error) }
+        result.raise().context(LiboqsFailure)
     }
 
     pub fn encapsulate(&self, public_key: &[u8], shared_secret: &mut [u8], ciphertext: &mut [u8]) -> Result<()> {
         if public_key.len() < self.public_key_length() {
             // Public key length violation
-            return Err(Error)
+            return Err(Error::PublicKeyInsufficientSize {
+                expected: self.public_key_length(),
+                actual: public_key.len(),
+            })
         }
         if ciphertext.len() < self.cipher_text_length() {
             // Ciphertext length violation
-            return Err(Error)
+            return Err(Error::CipherTextInsufficientSize {
+                expected: self.cipher_text_length(),
+                actual: ciphertext.len(),
+            })
         }
         let result = unsafe {
             ffi::OQS_KEM_encaps(
@@ -222,17 +234,23 @@ impl OqsKem {
                 public_key.as_ptr(),
             )
         };
-        if result == OQS_SUCCESS { Ok(()) } else { Err(Error) }
+        result.raise().context(LiboqsFailure)
     }
 
     pub fn decapsulate(&self, private_key: &[u8], ciphertext: &[u8], shared_secret: &mut [u8]) -> Result<()> {
         if ciphertext.len() < self.cipher_text_length() {
             // Ciphertext length violation
-            return Err(Error)
+            return Err(Error::CipherTextInsufficientSize {
+                expected: self.cipher_text_length(),
+                actual: ciphertext.len(),
+            })
         }
         if shared_secret.len() < self.shared_secret_length() {
             // Shared secret length violation
-            return Err(Error)
+            return Err(Error::SharedSecretInsufficientSize {
+                expected: self.shared_secret_length(),
+                actual: shared_secret.len(),
+            })
         }
         let result = unsafe {
             ffi::OQS_KEM_decaps(
@@ -242,7 +260,7 @@ impl OqsKem {
                 private_key.as_ptr(),
             )
         };
-        if result == OQS_SUCCESS { Ok(()) } else { Err(Error) }
+        result.raise().context(LiboqsFailure)
     }
 }
 
@@ -255,21 +273,23 @@ impl Drop for OqsKem {
 /// The local result alias for fallible operations in this module.
 pub type Result<T> = ::std::result::Result<T, Error>;
 
-/// Error representing a failure in any [`OqsKem`](struct.OqsRand.html) operation.
-#[derive(Debug, Copy, Clone, Hash)]
-pub struct Error;
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> ::std::result::Result<(), fmt::Error> {
-        use std::error::Error;
-        self.description().fmt(f)
-    }
-}
-
-impl ::std::error::Error for Error {
-    fn description(&self) -> &str {
-        "Key exchange operation failed"
-    }
+#[derive(Debug, Snafu)]
+pub enum Error {
+    /// Public key buffer size less than required.
+    #[snafu(display("Public key buffer expected to be at least {} length, but {} given", expected, actual))]
+    PublicKeyInsufficientSize{ expected: usize, actual: usize },
+    /// Private key buffer size less than required.
+    #[snafu(display("Private key buffer expected to be at least {} length, but {} given", expected, actual))]
+    PrivateKeyInsufficientSize{ expected: usize, actual: usize },
+    /// Cipher text buffer size less than required.
+    #[snafu(display("Cipher text buffer expected to be at least {} length, but {} given", expected, actual))]
+    CipherTextInsufficientSize{ expected: usize, actual: usize },
+    /// Shared secret buffer size less than required.
+    #[snafu(display("Shared secret buffer expected to be at least {} length, but {} given", expected, actual))]
+    SharedSecretInsufficientSize{ expected: usize, actual: usize },
+    /// Liboqs returned unsuccessful status.
+    #[snafu(display("{}", source))]
+    LiboqsFailure{ source: OqsError },
 }
 
 #[cfg(test)]

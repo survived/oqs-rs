@@ -8,11 +8,13 @@ repository = "https://github.com/mullvad/oqs-rs"
 description = "Bindings for Open Quantum Safe, a library for quantum-resistant cryptographic algorithms."
 keywords = ["post-quantum", "rng", "kex", "liboqs", "key-exchange"]
 categories = ["algorithms", "api-bindings", "cryptography"]
+edition = "2018"
 
 [dependencies]
 oqs-sys = { path = "../oqs-sys", version = "0.1.0" }
 libc = { version = "0.2", default-features = false }
 serde = { version = "1.0", default-features = false, optional = true, features = ["derive"] }
+snafu = "0.6.0"
 
 [dev-dependencies]
 serde_json = "1.0"

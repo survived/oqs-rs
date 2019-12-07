@@ -78,6 +78,7 @@
 extern crate core;
 extern crate libc;
 extern crate oqs_sys;
+extern crate snafu;
 
 #[cfg_attr(feature = "serde", macro_use)]
 #[cfg(feature = "serde")]
@@ -89,4 +90,4 @@ pub mod kem;
 /// The PRNG primitives.
 pub mod rand;
 
-//mod buf;
+mod error;
