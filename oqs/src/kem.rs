@@ -161,17 +161,37 @@ impl OqsKem {
         }
     }
 
+    #[inline]
+    pub fn public_key_length(&self) -> usize {
+        unsafe { self.oqs_kex.as_ref() }.length_public_key
+    }
+
+    #[inline]
+    pub fn private_key_length(&self) -> usize {
+        unsafe { self.oqs_kex.as_ref() }.length_secret_key
+    }
+
+    #[inline]
+    pub fn cipher_text_length(&self) -> usize {
+        unsafe { self.oqs_kex.as_ref() }.length_ciphertext
+    }
+
+    #[inline]
+    pub fn shared_secret_length(&self) -> usize {
+        unsafe { self.oqs_kex.as_ref() }.length_shared_secret
+    }
+
     /// Returns the key exchange algorithm used by this instance.
     pub fn algorithm(&self) -> OqsKemAlg {
         self.algorithm
     }
 
     pub fn generate_keypair<'a>(&'a self, public_key: &mut [u8], private_key: &mut [u8]) -> Result<()> {
-        if public_key.len() < unsafe { self.oqs_kex.as_ref() }.length_public_key {
+        if public_key.len() < self.public_key_length() {
             // Public key length violation
             return Err(Error)
         }
-        if private_key.len() < unsafe { self.oqs_kex.as_ref() }.length_secret_key {
+        if private_key.len() < self.private_key_length() {
             // Private key length violation
             return Err(Error)
         }
@@ -186,11 +206,11 @@ impl OqsKem {
     }
 
     pub fn encapsulate(&self, public_key: &[u8], shared_secret: &mut [u8], ciphertext: &mut [u8]) -> Result<()> {
-        if public_key.len() < unsafe { self.oqs_kex.as_ref() }.length_public_key {
+        if public_key.len() < self.public_key_length() {
             // Public key length violation
             return Err(Error)
         }
-        if ciphertext.len() < unsafe { self.oqs_kex.as_ref() }.length_ciphertext {
+        if ciphertext.len() < self.cipher_text_length() {
             // Ciphertext length violation
             return Err(Error)
         }
@@ -206,11 +226,11 @@ impl OqsKem {
     }
 
     pub fn decapsulate(&self, private_key: &[u8], ciphertext: &[u8], shared_secret: &mut [u8]) -> Result<()> {
-        if ciphertext.len() < unsafe { self.oqs_kex.as_ref() }.length_ciphertext {
+        if ciphertext.len() < self.cipher_text_length() {
             // Ciphertext length violation
             return Err(Error)
         }
-        if shared_secret.len() < unsafe { self.oqs_kex.as_ref() }.length_shared_secret {
+        if shared_secret.len() < self.shared_secret_length() {
             // Shared secret length violation
             return Err(Error)
         }
