@@ -31,7 +31,7 @@ fn main() {
 
     println!(
         "cargo:rustc-link-search=native={}",
-        oqs_dir.to_string_lossy()
+        oqs_dir.join(".libs").to_string_lossy()
     );
 
 //    let _ = bindgen::builder()
