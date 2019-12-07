@@ -73,7 +73,7 @@
 //! [oqs-sys]: https://crates.io/crates/oqs-sys
 //! [oqs-kex-rpc]: https://crates.io/crates/oqs-kex-rpc
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 extern crate core;
 extern crate libc;
@@ -89,4 +89,4 @@ pub mod kex;
 /// The PRNG primitives.
 pub mod rand;
 
-mod buf;
+//mod buf;

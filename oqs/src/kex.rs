@@ -11,68 +11,115 @@
 //! are denoted Alice and Bob in [liboqs] so this library will use the same terminology. Out of
 //! these two parties, Alice is the one initiating a key exchange operation.
 //!
-//! See the [`OqsKex`] struct for details on key exchange.
+//! See the [`OqsKem`] struct for details on key exchange.
 //!
 //! [liboqs]: https://github.com/open-quantum-safe/liboqs
-//! [`OqsKex`]: struct.OqsKex.html
+//! [`OqsKem`]: struct.OqsKem.html
 
 use libc;
-use core::ptr;
+use core::ptr::{self, NonNull};
 use std::fmt;
 
 use oqs_sys::kex as ffi;
-use oqs_sys::common::OQS_SUCCESS;
-use rand::OqsRand;
-use buf::Buf;
+use oqs_sys::common::OQS_STATUS::OQS_SUCCESS;
 
 
 /// Enum representation of the supported key exchange algorithms. Used to select backing algorithm
-/// when creating [`OqsKex`](struct.OqsKex.html) instances.
+/// when creating [`OqsKem`](struct.OqsKem.html) instances.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[allow(missing_docs)]
-pub enum OqsKexAlg {
-    /// The default KEX algorithm. This just maps to the `OQS_KEX_alg_default` enum value in
-    /// `liboqs`, so which algorithm is used as the default depends on which one it is set to
-    /// in `liboqs`.
+pub enum OqsKemAlg {
     Default,
-    RlweBcns15,
-    RlweNewhope,
-    RlweMsrln16,
-    /// The `LweFrodo` algorithm requires a 16 byte seed to perform the key exchange. This seed
-    /// must be the same on both Alice's and Bob's side for them to come up with the same shared
-    /// key.
-    LweFrodo { seed: [u8; 16] },
-    SidhCln16,
-    SidhCln16Compressed,
-    CodeMcbits,
-    Ntru,
-    /// This is a reference implementation of SIDH. Not intended for use in production.
-    SidhIqcRef,
-    MlweKyber,
+    Bike1L1Cpa,
+    Bike1L3Cpa,
+    Bike1L1Fo,
+    Bike1L3Fo,
+    Kyber512,
+    Kyber768,
+    Kyber1024,
+    Kyber51290s,
+    Kyber76890s,
+    Kyber102490s,
+    Newhope512cca,
+    Newhope1024cca,
+    NtruHps2048509,
+    NtruHps2048677,
+    NtruHps4096821,
+    NtruHrss701,
+    SaberLightsaber,
+    SaberSaber,
+    SaberFiresaber,
+    Frodokem640Aes,
+    Frodokem640Shake,
+    Frodokem976Aes,
+    Frodokem976Shake,
+    Frodokem1344Aes,
+    Frodokem1344Shake,
+    SidhP434,
+    SidhP434Compressed,
+    SidhP503,
+    SidhP503Compressed,
+    SidhP610,
+    SidhP610Compressed,
+    SidhP751,
+    SidhP751Compressed,
+    SikeP434,
+    SikeP434Compressed,
+    SikeP503,
+    SikeP503Compressed,
+    SikeP610,
+    SikeP610Compressed,
+    SikeP751,
+    SikeP751Compressed,
 }
 
-impl Default for OqsKexAlg {
-    fn default() -> Self {
-        OqsKexAlg::Default
-    }
-}
-
-impl From<OqsKexAlg> for ffi::OQS_KEX_alg_name {
-    fn from(alg: OqsKexAlg) -> Self {
-        use self::OqsKexAlg::*;
-        match alg {
-            Default => ffi::OQS_KEX_alg_name::OQS_KEX_alg_default,
-            RlweBcns15 => ffi::OQS_KEX_alg_name::OQS_KEX_alg_rlwe_bcns15,
-            RlweNewhope => ffi::OQS_KEX_alg_name::OQS_KEX_alg_rlwe_newhope,
-            RlweMsrln16 => ffi::OQS_KEX_alg_name::OQS_KEX_alg_rlwe_msrln16,
-            LweFrodo { .. } => ffi::OQS_KEX_alg_name::OQS_KEX_alg_lwe_frodo,
-            SidhCln16 => ffi::OQS_KEX_alg_name::OQS_KEX_alg_sidh_cln16,
-            SidhCln16Compressed => ffi::OQS_KEX_alg_name::OQS_KEX_alg_sidh_cln16_compressed,
-            CodeMcbits => ffi::OQS_KEX_alg_name::OQS_KEX_alg_code_mcbits,
-            Ntru => ffi::OQS_KEX_alg_name::OQS_KEX_alg_ntru,
-            SidhIqcRef => ffi::OQS_KEX_alg_name::OQS_KEX_alg_sidh_iqc_ref,
-            MlweKyber => ffi::OQS_KEX_alg_name::OQS_KEX_alg_mlwe_kyber,
+impl OqsKemAlg {
+    pub fn alg_name(&self) -> &'static [u8] {
+        use self::OqsKemAlg::*;
+        match self {
+            Default => ffi::OQS_KEM_alg_default,
+            Bike1L1Cpa => ffi::OQS_KEM_alg_bike1_l1_cpa,
+            Bike1L3Cpa => ffi::OQS_KEM_alg_bike1_l3_cpa,
+            Bike1L1Fo => ffi::OQS_KEM_alg_bike1_l1_fo,
+            Bike1L3Fo => ffi::OQS_KEM_alg_bike1_l3_fo,
+            Kyber512 => ffi::OQS_KEM_alg_kyber_512,
+            Kyber768 => ffi::OQS_KEM_alg_kyber_768,
+            Kyber1024 => ffi::OQS_KEM_alg_kyber_1024,
+            Kyber51290s => ffi::OQS_KEM_alg_kyber_512_90s,
+            Kyber76890s => ffi::OQS_KEM_alg_kyber_768_90s,
+            Kyber102490s => ffi::OQS_KEM_alg_kyber_1024_90s,
+            Newhope512cca => ffi::OQS_KEM_alg_newhope_512cca,
+            Newhope1024cca => ffi::OQS_KEM_alg_newhope_1024cca,
+            NtruHps2048509 => ffi::OQS_KEM_alg_ntru_hps2048509,
+            NtruHps2048677 => ffi::OQS_KEM_alg_ntru_hps2048677,
+            NtruHps4096821 => ffi::OQS_KEM_alg_ntru_hps4096821,
+            NtruHrss701 => ffi::OQS_KEM_alg_ntru_hrss701,
+            SaberLightsaber => ffi::OQS_KEM_alg_saber_lightsaber,
+            SaberSaber => ffi::OQS_KEM_alg_saber_saber,
+            SaberFiresaber => ffi::OQS_KEM_alg_saber_firesaber,
+            Frodokem640Aes => ffi::OQS_KEM_alg_frodokem_640_aes,
+            Frodokem640Shake => ffi::OQS_KEM_alg_frodokem_640_shake,
+            Frodokem976Aes => ffi::OQS_KEM_alg_frodokem_976_aes,
+            Frodokem976Shake => ffi::OQS_KEM_alg_frodokem_976_shake,
+            Frodokem1344Aes => ffi::OQS_KEM_alg_frodokem_1344_aes,
+            Frodokem1344Shake => ffi::OQS_KEM_alg_frodokem_1344_shake,
+            SidhP434 => ffi::OQS_KEM_alg_sidh_p434,
+            SidhP434Compressed => ffi::OQS_KEM_alg_sidh_p434_compressed,
+            SidhP503 => ffi::OQS_KEM_alg_sidh_p503,
+            SidhP503Compressed => ffi::OQS_KEM_alg_sidh_p503_compressed,
+            SidhP610 => ffi::OQS_KEM_alg_sidh_p610,
+            SidhP610Compressed => ffi::OQS_KEM_alg_sidh_p610_compressed,
+            SidhP751 => ffi::OQS_KEM_alg_sidh_p751,
+            SidhP751Compressed => ffi::OQS_KEM_alg_sidh_p751_compressed,
+            SikeP434 => ffi::OQS_KEM_alg_sike_p434,
+            SikeP434Compressed => ffi::OQS_KEM_alg_sike_p434_compressed,
+            SikeP503 => ffi::OQS_KEM_alg_sike_p503,
+            SikeP503Compressed => ffi::OQS_KEM_alg_sike_p503_compressed,
+            SikeP610 => ffi::OQS_KEM_alg_sike_p610,
+            SikeP610Compressed => ffi::OQS_KEM_alg_sike_p610_compressed,
+            SikeP751 => ffi::OQS_KEM_alg_sike_p751,
+            SikeP751Compressed => ffi::OQS_KEM_alg_sike_p751_compressed,
         }
     }
 }
@@ -97,281 +144,102 @@ static LWE_FRODO_PARAM: &str = "recommended\0";
 ///
 /// [`alice_0`]: #method.alice_0
 /// [`bob`]: #method.bob
-/// [`alice_1`]: struct.OqsKexAlice.html#method.alice_1
-/// [public message]: struct.OqsKexAlice.html#method.get_alice_msg
-pub struct OqsKex<'r> {
-    _rand: &'r OqsRand,
-    algorithm: OqsKexAlg,
-    oqs_kex: *mut ffi::OQS_KEX,
+/// [`alice_1`]: struct.OqsKemAlice.html#method.alice_1
+/// [public message]: struct.OqsKemAlice.html#method.get_alice_msg
+pub struct OqsKem {
+    algorithm: OqsKemAlg,
+    oqs_kex: NonNull<ffi::OQS_KEM>,
 }
 
-impl<'r> OqsKex<'r> {
+impl OqsKem {
     /// Initializes and returns a new OQS key exchange instance.
-    pub fn new(rand: &'r OqsRand, algorithm: OqsKexAlg) -> Result<Self> {
-        let (seed_ptr, seed_len) = match algorithm {
-            OqsKexAlg::LweFrodo { ref seed } => (seed.as_ptr(), seed.len()),
-            _ => (ptr::null(), 0),
-        };
-        let named_parameters = match algorithm {
-            OqsKexAlg::LweFrodo { .. } => LWE_FRODO_PARAM.as_ptr(),
-            _ => ptr::null(),
-        };
-
+    pub fn new(algorithm: OqsKemAlg) -> Result<Self> {
         let oqs_kex = unsafe {
-            ffi::OQS_KEX_new(
-                rand.oqs_rand,
-                ffi::OQS_KEX_alg_name::from(algorithm),
-                seed_ptr,
-                seed_len,
-                named_parameters as *const i8,
+            ffi::OQS_KEM_new(
+                algorithm.alg_name().as_ptr() as *const ::libc::c_char
             )
         };
-        if oqs_kex != ptr::null_mut() {
-            Ok(OqsKex {
-                _rand: rand,
-                algorithm,
-                oqs_kex,
-            })
-        } else {
-            Err(Error)
+        match NonNull::new(oqs_kex) {
+            Some(oqs_kex) => Ok(OqsKem{ algorithm, oqs_kex }),
+            None => Err(Error),
         }
     }
 
     /// Returns the key exchange algorithm used by this instance.
-    pub fn algorithm(&self) -> OqsKexAlg {
+    pub fn algorithm(&self) -> OqsKemAlg {
         self.algorithm
     }
 
-    /// Method for doing Alice's first step in the key exchange.
-    ///
-    /// If the operation is successful, an [`OqsKexAlice`] is returned. The returned struct can be
-    /// used to retreive [Alice's public message], and to perform the [finalizing step] of the key
-    /// exchange that will finally yield the [shared secret key].
-    ///
-    /// [`OqsKexAlice`]: struct.OqsKexAlice.html
-    /// [Alice's public message]: struct.AliceMsg.html
-    /// [finalizing step]: struct.OqsKexAlice.html#method.alice_1
-    /// [shared secret key]: struct.SharedKey.html
-    pub fn alice_0<'a>(&'a self) -> Result<OqsKexAlice<'a, 'r>> {
-        let mut alice_priv = ptr::null_mut();
-        let mut alice_msg_ptr = ptr::null_mut();
-        let mut alice_msg_len = 0;
+    pub fn generate_keypair<'a>(&'a self, public_key: &mut [u8], private_key: &mut [u8]) -> Result<()> {
+        if public_key.len() < unsafe { self.oqs_kex.as_ref() }.length_public_key {
+            // Public key length violation
+            return Err(Error)
+        }
+        if private_key.len() < unsafe { self.oqs_kex.as_ref() }.length_secret_key {
+            // Private key length violation
+            return Err(Error)
+        }
         let result = unsafe {
-            ffi::OQS_KEX_alice_0(
-                self.oqs_kex,
-                &mut alice_priv,
-                &mut alice_msg_ptr,
-                &mut alice_msg_len,
+            ffi::OQS_KEM_keypair(
+                self.oqs_kex.as_ptr(),
+                public_key.as_mut_ptr(),
+                private_key.as_mut_ptr(),
             )
         };
-        if result == OQS_SUCCESS as i32 {
-            let alice_msg_buf = Buf::from_c(alice_msg_ptr, alice_msg_len);
-            let alice_msg = AliceMsg::new(self.algorithm, alice_msg_buf);
-            Ok(OqsKexAlice {
-                parent: self,
-                alice_priv,
-                alice_msg,
-            })
-        } else {
-            Err(Error)
-        }
+        if result == OQS_SUCCESS { Ok(()) } else { Err(Error) }
     }
 
-    /// Key exchange method for Bob. When given [Alice's public message], this method computes
-    /// [Bob's public message] and the final [shared secret key].
-    ///
-    /// [Alice's public message]: struct.AliceMsg.html
-    /// [Bob's public message]: struct.BobMsg.html
-    /// [shared secret key]: struct.SharedKey.html
-    pub fn bob(&self, alice_msg: &AliceMsg) -> Result<(BobMsg, SharedKey)> {
-        let mut bob_msg = ptr::null_mut();
-        let mut bob_msg_len = 0;
-        let mut key = ptr::null_mut();
-        let mut key_len = 0;
+    pub fn encapsulate(&self, public_key: &[u8], shared_secret: &mut [u8], ciphertext: &mut [u8]) -> Result<()> {
+        if public_key.len() < unsafe { self.oqs_kex.as_ref() }.length_public_key {
+            // Public key length violation
+            return Err(Error)
+        }
+        if ciphertext.len() < unsafe { self.oqs_kex.as_ref() }.length_ciphertext {
+            // Ciphertext length violation
+            return Err(Error)
+        }
         let result = unsafe {
-            ffi::OQS_KEX_bob(
-                self.oqs_kex,
-                alice_msg.data().as_ptr(),
-                alice_msg.data().len(),
-                &mut bob_msg,
-                &mut bob_msg_len,
-                &mut key,
-                &mut key_len,
+            ffi::OQS_KEM_encaps(
+                self.oqs_kex.as_ptr(),
+                ciphertext.as_mut_ptr(),
+                shared_secret.as_mut_ptr(),
+                public_key.as_ptr(),
             )
         };
-        if result == OQS_SUCCESS as i32 {
-            Ok((
-                BobMsg::new(self.algorithm, Buf::from_c(bob_msg, bob_msg_len)),
-                SharedKey::new(self.algorithm, Buf::from_c(key, key_len)),
-            ))
-        } else {
-            Err(Error)
+        if result == OQS_SUCCESS { Ok(()) } else { Err(Error) }
+    }
+
+    pub fn decapsulate(&self, private_key: &[u8], ciphertext: &[u8], shared_secret: &mut [u8]) -> Result<()> {
+        if ciphertext.len() < unsafe { self.oqs_kex.as_ref() }.length_ciphertext {
+            // Ciphertext length violation
+            return Err(Error)
         }
+        if shared_secret.len() < unsafe { self.oqs_kex.as_ref() }.length_shared_secret {
+            // Shared secret length violation
+            return Err(Error)
+        }
+        let result = unsafe {
+            ffi::OQS_KEM_decaps(
+                self.oqs_kex.as_ptr(),
+                shared_secret.as_mut_ptr(),
+                ciphertext.as_ptr() as *const ::libc::c_uchar,
+                private_key.as_ptr(),
+            )
+        };
+        if result == OQS_SUCCESS { Ok(()) } else { Err(Error) }
     }
 }
 
-impl<'r> Drop for OqsKex<'r> {
+impl Drop for OqsKem {
     fn drop(&mut self) {
-        unsafe { ffi::OQS_KEX_free(self.oqs_kex) };
+        unsafe { ffi::OQS_KEM_free(self.oqs_kex.as_ptr()) };
     }
 }
-
-
-/// Struct representing the intermediate key exchange state for Alice. This struct contains the
-/// public message to send to Bob and the method used to finalize the key exchange.
-pub struct OqsKexAlice<'a, 'r>
-where
-    'r: 'a,
-{
-    parent: &'a OqsKex<'r>,
-    alice_priv: *mut libc::c_void,
-    alice_msg: AliceMsg,
-}
-
-impl<'a, 'r> OqsKexAlice<'a, 'r> {
-    /// Method for doing Alice's second, and last, step in the key exchange. When given [Bob's
-    /// public message], this method computes the final [shared secret key].
-    ///
-    /// [Bob's public message]: struct.BobMsg.html
-    /// [shared secret key]: struct.SharedKey.html
-    pub fn alice_1(self, bob_msg: &BobMsg) -> Result<SharedKey> {
-        let mut key = ptr::null_mut();
-        let mut key_len = 0;
-        let result = unsafe {
-            ffi::OQS_KEX_alice_1(
-                self.parent.oqs_kex,
-                self.alice_priv,
-                bob_msg.data().as_ptr(),
-                bob_msg.data().len(),
-                &mut key,
-                &mut key_len,
-            )
-        };
-        if result == OQS_SUCCESS as i32 {
-            Ok(SharedKey::new(
-                self.parent.algorithm,
-                Buf::from_c(key, key_len),
-            ))
-        } else {
-            Err(Error)
-        }
-    }
-
-    /// Returns the key exchange algorithm used by this instance.
-    pub fn algorithm(&self) -> OqsKexAlg {
-        self.parent.algorithm
-    }
-
-    /// Return Alice's public message, the data that should be sent over to bob.
-    pub fn get_alice_msg(&self) -> &AliceMsg {
-        &self.alice_msg
-    }
-}
-
-impl<'a, 'r> Drop for OqsKexAlice<'a, 'r> {
-    fn drop(&mut self) {
-        unsafe {
-            ffi::OQS_KEX_alice_priv_free(self.parent.oqs_kex, self.alice_priv);
-        };
-    }
-}
-
-
-/// Alice's message (public key + optional additional data)
-#[derive(Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct AliceMsg {
-    algorithm: OqsKexAlg,
-    data: Buf,
-}
-
-impl AliceMsg {
-    fn new(algorithm: OqsKexAlg, data: Buf) -> Self {
-        AliceMsg { algorithm, data }
-    }
-
-    /// Returns the key exchange algorithm used to compute this message.
-    pub fn algorithm(&self) -> OqsKexAlg {
-        self.algorithm
-    }
-
-    /// Returns the data in this message as a slice.
-    pub fn data(&self) -> &[u8] {
-        self.data.data()
-    }
-}
-
-impl AsRef<[u8]> for AliceMsg {
-    fn as_ref(&self) -> &[u8] {
-        self.data.as_ref()
-    }
-}
-
-/// Bob's message (public key / encryption of shared key + optional additional data)
-#[derive(Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct BobMsg {
-    algorithm: OqsKexAlg,
-    data: Buf,
-}
-
-impl BobMsg {
-    fn new(algorithm: OqsKexAlg, data: Buf) -> Self {
-        BobMsg { algorithm, data }
-    }
-
-    /// Returns the key exchange algorithm used to compute this message.
-    pub fn algorithm(&self) -> OqsKexAlg {
-        self.algorithm
-    }
-
-    /// Returns the data in this message as a slice.
-    pub fn data(&self) -> &[u8] {
-        self.data.data()
-    }
-}
-
-impl AsRef<[u8]> for BobMsg {
-    fn as_ref(&self) -> &[u8] {
-        self.data.as_ref()
-    }
-}
-
-/// Shared key, the result of a completed key exchange.
-#[derive(Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct SharedKey {
-    algorithm: OqsKexAlg,
-    data: Buf,
-}
-
-impl SharedKey {
-    fn new(algorithm: OqsKexAlg, data: Buf) -> Self {
-        SharedKey { algorithm, data }
-    }
-
-    /// Returns the key exchange algorithm used to compute this key.
-    pub fn algorithm(&self) -> OqsKexAlg {
-        self.algorithm
-    }
-
-    /// Returns the data in this key as a slice.
-    pub fn data(&self) -> &[u8] {
-        self.data.data()
-    }
-}
-
-impl AsRef<[u8]> for SharedKey {
-    fn as_ref(&self) -> &[u8] {
-        self.data.as_ref()
-    }
-}
-
 
 /// The local result alias for fallible operations in this module.
 pub type Result<T> = ::std::result::Result<T, Error>;
 
-/// Error representing a failure in any [`OqsKex`](struct.OqsRand.html) operation.
+/// Error representing a failure in any [`OqsKem`](struct.OqsRand.html) operation.
 #[derive(Debug, Copy, Clone, Hash)]
 pub struct Error;
 
@@ -396,46 +264,8 @@ mod tests {
 
     use rand::OqsRandAlg;
 
-    macro_rules! test_full_kex {
-        ($name:ident, $algo:expr) => (
-            #[test]
-            fn $name() {
-                let rand_alice = OqsRand::new(OqsRandAlg::default()).unwrap();
-                let kex_alice = OqsKex::new(&rand_alice, $algo)
-                    .expect("Unable to create KEX");
-                let kex_alice_0 = kex_alice.alice_0().expect("Failed in alice_0");
+    #[test]
+    fn bike() {
 
-                let (bob_msg, key1) = helper_bob(kex_alice_0.get_alice_msg());
-
-                let key2 = kex_alice_0.alice_1(&bob_msg).expect("Failed in alice_1");
-
-                assert!(!key1.data().is_empty());
-                assert_eq!(key1, key2);
-            }
-        )
-    }
-
-    test_full_kex!(full_kex_default, OqsKexAlg::Default);
-    test_full_kex!(full_kex_rlwe_bcns15, OqsKexAlg::RlweBcns15);
-    test_full_kex!(full_kex_rlwe_newhope, OqsKexAlg::RlweNewhope);
-    test_full_kex!(full_kex_rlwe_msrln16, OqsKexAlg::RlweMsrln16);
-    test_full_kex!(full_kex_lwe_frodo, OqsKexAlg::LweFrodo { seed: [0; 16] });
-    test_full_kex!(full_kex_sidh_cln16, OqsKexAlg::SidhCln16);
-    test_full_kex!(
-        full_kex_sidh_cln16_compressed,
-        OqsKexAlg::SidhCln16Compressed
-    );
-    test_full_kex!(full_kex_code_mcbits, OqsKexAlg::CodeMcbits);
-    test_full_kex!(full_kex_ntrl, OqsKexAlg::Ntru);
-    test_full_kex!(full_kex_sidh_iqc_ref, OqsKexAlg::SidhIqcRef);
-    test_full_kex!(full_kex_mlwe_kyber, OqsKexAlg::MlweKyber);
-
-    fn helper_bob(alice_msg: &AliceMsg) -> (BobMsg, SharedKey) {
-        let rand = OqsRand::new(OqsRandAlg::default()).unwrap();
-        let (bob_msg, shared_key) = OqsKex::new(&rand, alice_msg.algorithm())
-            .unwrap()
-            .bob(alice_msg)
-            .unwrap();
-        (bob_msg, shared_key)
     }
 }
