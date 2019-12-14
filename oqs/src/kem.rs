@@ -270,6 +270,9 @@ impl Drop for OqsKem {
     }
 }
 
+unsafe impl Send for OqsKem {}
+unsafe impl Sync for OqsKem {}
+
 /// The local result alias for fallible operations in this module.
 pub type Result<T> = ::std::result::Result<T, Error>;
 
