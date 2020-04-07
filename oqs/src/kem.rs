@@ -25,7 +25,7 @@ use crate::error::{OqsError, OqsStatusEx};
 
 /// Enum representation of the supported key exchange algorithms. Used to select backing algorithm
 /// when creating [`OqsKem`](struct.OqsKem.html) instances.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, enum_iterator::IntoEnumIterator)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[allow(missing_docs)]
 pub enum OqsKemAlg {
